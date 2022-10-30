@@ -8,7 +8,7 @@ gcalc_1.0-1_amd64.deb: gcalc_1.0-1_amd64/DEBIAN/control gcalc_1.0-1_amd64/usr/bi
 gcalc_1.0-1_amd64/DEBIAN/control:
 	mkdir -p gcalc_1.0-1_amd64/DEBIAN
 	cp control gcalc_1.0-1_amd64/DEBIAN/control
-gcalc_1.0-1_amd64/usr/bin/gcalc:
+gcalc_1.0-1_amd64/usr/bin/gcalc: gcalc
 	mkdir -p gcalc_1.0-1_amd64/usr/bin
 	cp gcalc gcalc_1.0-1_amd64/usr/bin/gcalc
 deploy: gcalc_1.0-1_amd64.deb
