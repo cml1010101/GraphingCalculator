@@ -1,0 +1,5 @@
+Package: gcalc
+Version: 1.0
+Architecture: amd64
+Maintainer: cml1010101
+Description: A graphing calculator program.
