@@ -22,7 +22,8 @@ bool isfunction(string expr, uint8_t* operands)
 {
     *operands = (expr == "max" || expr == "min") ? 2 : 1;
     return expr == "max" || expr == "min" || expr == "sin" || expr == "cos" || expr == "tan"
-        || expr == "atan" || expr == "acos" || expr == "asin";
+        || expr == "atan" || expr == "acos" || expr == "asin" || expr == "log" || expr == "ln"
+        || expr == "sqrt";
 }
 struct Token
 {
@@ -84,6 +85,7 @@ struct Token
     }
     double value(double x)
     {
+        if (expr == "e") return exp(1);
         if (expr.find('x') == -1) return stod(expr);
         if (expr == "x") return x;
         return stod(expr.substr(0, expr.find('x'))) * x;
@@ -113,6 +115,19 @@ struct Token
         if (expr == "atan")
         {
             return atan(x);
+        }
+        if (expr == "log")
+        {
+            return log10(x);
+        }
+        if (expr == "ln")
+        {
+            return log(x);
+        }
+        if (expr == "sqrt")
+        {
+            if (x < 0) throw x;
+            return sqrt(x);
         }
         return -1;
     }
@@ -218,15 +233,21 @@ skip2:
     cairo_set_line_width(cairo, 1);
     for (double i = XMIN; i < XMAX; i += RESOLUTION)
     {
-        double y1 = f(i), y2 = f(i + RESOLUTION);
-        if (y1 >= YMAX || y1 < YMIN || y1 >= YMAX || y1 < YMIN) continue;
-        cairo_set_source_rgb(cairo, 0, 0, 1);
-        cairo_move_to(cairo, (i - XMIN) * XGAP, 500 - (y1 - YMIN) * YGAP);
-        cairo_line_to(cairo, (i + RESOLUTION - XMIN) * XGAP, 500 - (y2 - YMIN) * YGAP);
-        cairo_stroke(cairo);
+        try
+        {
+            double y1 = f(i), y2 = f(i + RESOLUTION);
+            if (y1 >= YMAX || y1 < YMIN || y1 >= YMAX || y1 < YMIN) continue;
+            cairo_set_source_rgb(cairo, 0, 0, 1);
+            cairo_move_to(cairo, (i - XMIN) * XGAP, 500 - (y1 - YMIN) * YGAP);
+            cairo_line_to(cairo, (i + RESOLUTION - XMIN) * XGAP, 500 - (y2 - YMIN) * YGAP);
+            cairo_stroke(cairo);
+        }
+        catch (double err)
+        {
+        }
     }
 }
-regex r("((\\d[a-z])|((\\d+)|([a-z]+)))|([\\*\\-\\+\\/\\^\\(\\)])");
+regex r("(\\d+)|([a-z]+)|([\\*\\-\\+\\/\\^\\(\\)])");
 int main(int argc, char const *argv[])
 {
     gtk_init(&argc, (char***)&argv);
@@ -242,8 +263,9 @@ int main(int argc, char const *argv[])
         expressions_standard.push_back(Token(string(what[0].first, what[0].second)));
         start = what[0].second;
     }
-    for (auto token : expressions_standard)
+    for (size_t j = 0; j < expressions_standard.size(); j++)
     {
+        auto token = expressions_standard[j];
         if (token.type == Token::Operator)
         {
             for (int i = op_stack.size() - 1; i >= 0; i--)
@@ -258,6 +280,51 @@ int main(int argc, char const *argv[])
                 else break;
             }
             op_stack.push_back(token);
+        }
+        else if (j != 0)
+        {
+            auto lastToken = expressions_standard[j - 1];
+            if (token.type == Token::Expression)
+            {
+                if (lastToken.type == Token::Expression)
+                {
+                    auto newToken = Token("*");
+                    for (int i = op_stack.size() - 1; i >= 0; i--)
+                    {
+                        if (op_stack[i].type != Token::LeftParentheses 
+                            && (op_stack[i].precedence > newToken.precedence || 
+                            (op_stack[i].left_align == true 
+                            && op_stack[i].precedence == newToken.precedence)))
+                        {
+                            expressions_rpn.push_back(op_stack[i]);
+                            op_stack.pop_back();
+                        }
+                        else break;
+                    }
+                    op_stack.push_back(newToken);
+                }
+            }
+            if (token.type == Token::LeftParentheses)
+            {
+                if (lastToken.type == Token::Expression
+                    || lastToken.type == Token::RightParentheses)
+                {
+                    auto newToken = Token("*");
+                    for (int i = op_stack.size() - 1; i >= 0; i--)
+                    {
+                        if (op_stack[i].type != Token::LeftParentheses 
+                            && (op_stack[i].precedence > newToken.precedence || 
+                            (op_stack[i].left_align == true 
+                            && op_stack[i].precedence == newToken.precedence)))
+                        {
+                            expressions_rpn.push_back(op_stack[i]);
+                            op_stack.pop_back();
+                        }
+                        else break;
+                    }
+                    op_stack.push_back(newToken);
+                }
+            }
         }
         if (token.type == Token::Expression)
         {
